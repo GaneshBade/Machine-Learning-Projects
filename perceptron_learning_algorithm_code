@@ -1,0 +1,51 @@
+import random
+
+def show_learning(w):
+    print(f"w0 = {w[0]:5.2f}, w1 = {w[1]:5.2f}, w2 = {w[2]:5.2f}")
+    
+# Define variables needed to control training process
+random.seed(7)
+LEARNING_RATE = 0.1
+index_list = [0, 1, 2, 3] #used to randomized order
+
+# Define training examples 
+x_train = [(1.0, -1.0, -1.0), (1.0, -1.0, 1.0),(1.0, 1.0, -1.0), (1.0, 1.0, 1.0)] # Inputs
+y_train = [1.0, 1.0, 1.0, -1.0] # Output (ground truth)
+
+# Define perceptron weights.
+w = [0.2, -0.6, 0.25] # Initialize to some “random” numbers 
+
+# Print initial weights.
+show_learning(w)
+
+def compute_output(w, x):
+    ''' First element in vector x must be 1
+        Length of w and x must be n+1 for nueron with n inputs'''
+    
+    z = 0.0
+    for i in range(len(w)):
+        z += x[i] * w[i] # compute sum of weighted inputs
+        
+        # apply signum activation function
+        if z < 0:
+            return -1
+        else:
+            return 1
+        
+# Perceptron training loop
+all_correct = False
+
+while not all_correct:
+    all_correct = True
+    random.shuffle(index_list)
+    for i in index_list:
+        x = x_train[i]
+        y = y_train[i]
+        p_out = compute_output(w, x)
+        # print(f"p_out: {p_out} and y value is: {y}")
+        
+        if y != p_out: # update weights when wrong
+            for j in range(0, len(w)):
+                w[j] += (y * LEARNING_RATE * x[j])
+            all_correct = False
+            show_learning(w) # show updated weights
