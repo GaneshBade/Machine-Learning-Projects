@@ -1,0 +1,13 @@
+def compute_output(w, x):
+    ''' First element in vector x must be 1
+        Length of w and x must be n+1 for nueron with n inputs'''
+    
+    z = 0.0
+    for i in range(len(w)):
+        z += x[i] * w[i] # compute sum of weighted inputs
+        
+        # apply signum activation function
+        if z < 0:
+            return -1
+        else:
+            return 1
