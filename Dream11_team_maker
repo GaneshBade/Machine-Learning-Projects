@@ -1,0 +1,165 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Mar 27 22:45:21 2022
+
+@author: ganeshbade
+"""
+
+import pandas as pd
+from sklearn.utils import shuffle
+from gensim import corpora
+
+toss_winner = pd.read_excel('/Users/ganeshbade/ipl.xls', sheet_name='Toss_win_team')
+TeamB = pd.read_excel('/Users/ganeshbade/ipl.xls', sheet_name='TeamB')
+
+both = pd.concat([toss_winner, TeamB])
+
+playerPoints = dict()
+for i in range(0, len(both)):
+    playerPoints[both.iloc[i]['players']]=both.iloc[i]['points']
+    
+roleDict = dict()
+for i in range(0, len(both)):
+    roleDict[both.iloc[i]['players']]=both.iloc[i]['role']
+
+teamNameDict = dict()
+for i in range(0, len(both)):
+    teamNameDict[both.iloc[i]['players']]=both.iloc[i]['teamName']
+    
+key_players = list(both[both['captain'] == 'c']['players'])
+
+import itertools
+
+teams_list = []
+
+teamsCreated = 0
+wk_limit = [1, 2, 3, 4]
+batsman_limit = [3, 4]
+allrounder_limit = [2, 3, 4]
+bowler_limit = [3, 4, 5, 6]
+teamA_limit = [6]
+teamB_limit = [5]
+
+for team in itertools.combinations(both['players'], 11):
+    totalPoints = 0
+    wk_count = 0
+    batsman_count = 0
+    allrounder_count = 0
+    bowler_count = 0
+    teamA_count = 0
+    teamB_count = 0
+
+    for point in team:
+        totalPoints += playerPoints[point]
+    
+    if totalPoints <= 100:
+        for role in team:
+            if roleDict[role] == 'wk':
+                wk_count += 1
+            elif roleDict[role] == 'batsman':
+                batsman_count += 1
+            elif roleDict[role] == 'allrounder':
+                allrounder_count += 1
+            else:
+                bowler_count += 1
+        
+        for player in team:
+            if teamNameDict[player] == 'teamA':
+                teamA_count += 1
+            else:
+                teamB_count += 1
+                
+    
+    if ((((((wk_count in wk_limit) & (batsman_count in batsman_limit)) & (allrounder_count in allrounder_limit)) & (bowler_count in bowler_limit)) & (teamA_count in teamA_limit)) & (teamB_count in teamB_limit)):        
+        teamsCreated += 1
+        print(f"teamsCreated: {teamsCreated}")
+        print(team)
+        teams_list.append(sorted(team))
+
+teams_df = pd.DataFrame(teams_list)      
+
+teams_df.drop_duplicates(inplace=True)  
+
+combined_list = []
+for i in range(0, len(teams_df)):
+    combined_list.append(sorted(teams_df.iloc[i].tolist()))
+
+teams_df['combined_list'] = combined_list
+
+dictionary = corpora.Dictionary(teams_df['combined_list'])
+corpus = [dictionary.doc2bow(text) for text in teams_df['combined_list']]
+
+
+from gensim import models
+lsi = models.LsiModel(corpus, id2word=dictionary, num_topics=len(teams_df))
+
+from gensim import similarities
+index = similarities.MatrixSimilarity(lsi[corpus])
+
+final_teams = []
+
+for i in range(0, 20):
+    shuffle_teams_df = shuffle(teams_df)
+    doc = shuffle_teams_df.sample(1)['combined_list']
+    vec_bow = dictionary.doc2bow(doc.iloc[0])
+    vec_lsi = lsi[vec_bow]
+    sims = index[vec_lsi]
+    sims = sorted(enumerate(sims), key=lambda item: -item[1])
+    final_teams.append(doc.iloc[0])
+    final_teams.append(teams_df.iloc[sims[-1][0]].combined_list)
+        
+    if len(final_teams) >= 20:
+        break
+
+v = pd.DataFrame(final_teams)
+vv = []
+
+player_role = []
+for i in range(0, len(v)):
+    temp = v.iloc[i].tolist()
+    player_role = []
+    for each in temp:
+        role = roleDict[each]
+        player_role.append((role, each))
+        player_role = sorted(player_role, reverse=True)
+    vv.append(player_role)
+    
+vvv = pd.DataFrame(vv)     
+
+vvv = vvv.drop_duplicates()   
+
+vvv.to_excel('/Users/ganeshbade/ipl_teams.xls')
+
+#%%
+
+gl_team = ['M Wade', 'Hooda', 'Miller', 'Manohar', 'Hardik', 'badoni', 'Tewatia', 'Krunal Pandya', 'badoni', 'Shami', 'Aaron']
+counter = 0
+for team in teams_df['combined_list']:
+    if sorted(gl_team) == sorted(team):
+        print(team)
+        counter += 1
+        print(f"counter: {counter}")
+
+#%%
+
+for player in key_players:
+    if player not in sorted(team):
+        print(f"player {player} is not a part of team")
+        teamsCreated += 1
+        print(f"teamsCreated: {teamsCreated}")
+        continue
+    
+
+gl_team = ('Ishan', 'Seifert', 'Prithvi', 'Rohit', 'T Varma', 'L Yadav', 'Axar', 'K Yadav', 'Thampi', 'Murugan', 'Khaleel')
+
+if sorted(gl_team) == sorted(team):
+    print(f"{'#'*100}")
+    print(f"GRAND League Team Found: {team}")
+    print(f"Team Points: {totalPoints}")
+    print(f"wk counts : {wk_count}")
+    print(f"batsman_count : {batsman_count}")
+    print(f"allrounder_count: {allrounder_count}")
+    print(f"bowler_count: {bowler_count}")
+    print(f"teamA_count: {teamA_count}")
+    print(f"teamB_count: {teamB_count}")
